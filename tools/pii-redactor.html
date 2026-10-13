@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PII Text Redactor — cloak · jsonversal</title>
+<meta name="description" content="Detect and mask emails, phones, credit cards, SSNs, IPs and URLs in any text — entirely in your browser.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="logo" aria-hidden="true"></span>
+      <span><b>cloak</b> <span class="sub">· jsonversal</span></span>
+    </a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / PII Text Redactor</div>
+    <h1>PII Text Redactor</h1>
+    <p>Paste any text containing personal data. cloak detects and masks sensitive values locally — nothing is sent anywhere.</p>
+  </div>
+
+  <div class="panel">
+    <h2>1 · Choose what to redact</h2>
+    <div class="row">
+      <label class="check"><input type="checkbox" data-type="email" checked> Email addresses <span class="desc">— name@domain.com</span></label>
+      <label class="check"><input type="checkbox" data-type="phone" checked> Phone numbers <span class="desc">— +1 202-555-0199, 07700 900000</span></label>
+      <label class="check"><input type="checkbox" data-type="card" checked> Credit cards <span class="desc">— 4111 1111 1111 1111</span></label>
+      <label class="check"><input type="checkbox" data-type="ssn" checked> US SSN <span class="desc">— 123-45-6789</span></label>
+      <label class="check"><input type="checkbox" data-type="ip" checked> IP addresses <span class="desc">— IPv4 &amp; IPv6</span></label>
+      <label class="check"><input type="checkbox" data-type="urlcred" checked> URL credentials <span class="desc">— https://user:pass@host</span></label>
+    </div>
+    <div class="sep"></div>
+    <div class="row">
+      <div class="col" style="flex:0 1 260px">
+        <label class="field" for="mode">Masking style</label>
+        <select id="mode">
+          <option value="block">Block ▮▮▮▮ (full)</option>
+          <option value="prefix2">Keep first 2 + mask</option>
+          <option value="suffix4">Mask + keep last 4</option>
+          <option value="hash">SHA-256 hash</option>
+        </select>
+      </div>
+      <div class="col" style="flex:1 1 320px">
+        <label class="field" for="custom">Custom regex (optional, flags: gi)</label>
+        <input type="text" id="custom" placeholder="e.g. \b\d{9}\b  — matches 9-digit numbers">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>2 · Input</h2>
+    <textarea id="input" placeholder="Paste text with personal info here…&#10;&#10;Example:&#10;Contact Jane Doe at jane.doe@example.com or +1 (202) 555-0199.&#10;Card 4111 1111 1111 1111, SSN 123-45-6789, IP 192.168.1.42."></textarea>
+    <div class="btn-row">
+      <button id="redact" class="primary">Redact text</button>
+      <button id="sample" class="ghost">Load sample</button>
+      <button id="clear" class="ghost">Clear</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>3 · Redacted output</h2>
+    <textarea id="output" readonly placeholder="Your redacted text appears here…"></textarea>
+    <div class="btn-row">
+      <button id="copyOut" class="ghost" data-copy="#output">Copy</button>
+      <button id="downloadOut" class="ghost">Download .txt</button>
+    </div>
+    <div id="stats" style="margin-top:14px"></div>
+  </div>
+
+  <p class="hint">This tool helps reduce accidental disclosure but is <strong>not</strong> a certified anonymization or compliance guarantee. Review output before sharing.</p>
+</main>
+
+<footer>
+  <div class="wrap"><strong>cloak · jsonversal</strong> — every byte of text stays in your browser.</div>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var PATTERNS = {
+    email: /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/g,
+    phone: /(?:\+?\d[\d\s().\-]{6,}\d)/g,
+    card: /\b\d(?:[ \-]?\d){12,18}\b/g,
+    ssn: /\b\d{3}-\d{2}-\d{4}\b/g,
+    ip: /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}|(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{1,4})\b/g,
+    urlcred: /\bhttps?:\/\/[^\s:@\/]+:[^\s:@\/]+@/gi
+  };
+  var LABELS = {email:'Emails',phone:'Phones',card:'Credit cards',ssn:'SSNs',ip:'IPs',urlcred:'URL credentials'};
+  var BLOCK='▮', MASK='●';
+  var $ = function(id){return document.getElementById(id);};
+
+  function luhnValid(s){
+    var d=s.replace(/\D/g,''),sum=0,alt=false;
+    for(var i=d.length-1;i>=0;i--){var n=+d[i];if(alt){n*=2;if(n>9)n-=9;}sum+=n;alt=!alt;}
+    return (sum%10)===0;
+  }
+  function maskBlock(m){return BLOCK.repeat(Math.min(Math.max(m.length,4),24));}
+  function maskPrefix(m){var k=2;if(m.length<=4)return MASK.repeat(m.length);return m.slice(0,k)+MASK.repeat(Math.max(m.length-k-2,2))+m.slice(-2);}
+  function maskSuffix(m){var k=4;if(m.length<=k)return MASK.repeat(m.length);return MASK.repeat(Math.max(m.length-k,3))+m.slice(-k);}
+
+  async function shaShort(m){
+    try{
+      var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(m));
+      var hex=Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+      return 'sha256:'+hex.slice(0,12)+'…';
+    }catch(e){return MASK.repeat(8);}
+  }
+
+  function buildReplacement(match, mode){
+    if(mode==='block') return maskBlock(match);
+    if(mode==='prefix2') return maskPrefix(match);
+    if(mode==='suffix4') return maskSuffix(match);
+    return null; // hash handled async
+  }
+
+  async function redact(){
+    var text=$('input').value;
+    if(!text){ $('output').value=''; $('stats').innerHTML=''; return; }
+    var mode=$('mode').value;
+    var enabled={};
+    document.querySelectorAll('input[data-type]').forEach(function(cb){enabled[cb.dataset.type]=cb.checked;});
+
+    var counts={};
+    // collect matches per enabled pattern
+    var replacements=[]; // {start,end,val,type}
+    Object.keys(PATTERNS).forEach(function(t){
+      if(!enabled[t]) return;
+      var re=PATTERNS[t]; re.lastIndex=0; var m;
+      while((m=re.exec(text))!==null){
+        var val=m[0];
+        if(t==='card' && !luhnValid(val)) { if(val.replace(/\D/g,'').length<13) continue; }
+        if(t==='phone'){
+          var digits=val.replace(/\D/g,'').length;
+          if(digits<7) continue; // too short to be a phone
+        }
+        replacements.push({start:m.index,end:m.index+val.length,val:val,type:t});
+        if(!counts[t])counts[t]=0; counts[t]++;
+        if(m.index===re.lastIndex) re.lastIndex++;
+      }
+    });
+    // custom regex
+    var custom=$('custom').value.trim();
+    if(custom){
+      try{
+        var cre=new RegExp(custom,'gi'); var cm;
+        while((cm=cre.exec(text))!==null){
+          replacements.push({start:cm.index,end:cm.index+cm[0].length,val:cm[0],type:'custom'});
+          if(!counts['custom'])counts['custom']=0; counts['custom']++;
+          if(cm.index===cre.lastIndex) cre.lastIndex++;
+        }
+      }catch(e){ window.cloak.toast('Invalid custom regex',true); }
+    }
+
+    // sort descending by start so we replace without shifting
+    replacements.sort(function(a,b){return b.start-a.start;});
+    // resolve hash replacements async
+    var out=text;
+    for(var i=0;i<replacements.length;i++){
+      var r=replacements[i];
+      var rep;
+      if(mode==='hash'){
+        rep=await shaShort(r.val);
+      }else{
+        rep=buildReplacement(r.val,mode);
+      }
+      out=out.slice(0,r.start)+rep+out.slice(r.end);
+    }
+    $('output').value=out;
+
+    // stats
+    var parts=[];
+    Object.keys(counts).forEach(function(t){
+      var label=LABELS[t]||'Custom';
+      parts.push('<span class="stat"><b>'+counts[t]+'</b> '+label+'</span>');
+    });
+    $('stats').innerHTML = parts.length
+      ? ('<div>'+parts.join('')+'</div><div style="margin-top:8px" class="stat"><b>'+replacements.length+'</b> total redactions</div>')
+      : '<div class="hint">No matches found for the selected types.</div>';
+  }
+
+  var SAMPLE="Contact Jane Doe at jane.doe@example.com or call +1 (202) 555-0199 / 07700 900123.\n"+
+    "Payment card 4111 1111 1111 1111, backup 5500-0000-0000-0004.\n"+
+    "SSN 123-45-6789. Server IP 192.168.1.42 reached via https://admin:secretpass@api.example.com/v1.\n"+
+    "IPv6 endpoint 2001:0db8:85a3:0000:0000:8a2e:0370:7334 responded OK.";
+
+  $('redact').addEventListener('click',redact);
+  $('custom').addEventListener('input',function(){clearTimeout(window._dt);window._dt=setTimeout(redact,400);});
+  document.querySelectorAll('input[data-type]').forEach(function(cb){cb.addEventListener('change',redact);});
+  $('mode').addEventListener('change',redact);
+  $('sample').addEventListener('click',function(){$('input').value=SAMPLE;redact();});
+  $('clear').addEventListener('click',function(){$('input').value='';$('output').value='';$('stats').innerHTML='';});
+  $('copyOut').addEventListener('click',function(){window.cloak.copyFrom(this);});
+  $('downloadOut').addEventListener('click',function(){
+    var t=$('output').value; if(!t){window.cloak.toast('Nothing to download',true);return;}
+    var blob=new Blob([t],{type:'text/plain'}); var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='redacted.txt'; a.click(); URL.revokeObjectURL(a.href);
+    window.cloak.toast('Downloaded redacted.txt');
+  });
+})();
+</script>
+</body>
+</html>

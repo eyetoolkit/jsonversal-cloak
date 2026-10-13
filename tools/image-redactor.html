@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Redactor — cloak · jsonversal</title>
+<meta name="description" content="Blur, black-out, or pixelate sensitive areas in photos — entirely in your browser. No upload.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / Image Redactor</div>
+    <h1>Image Redactor</h1>
+    <p>Upload a photo, then drag over faces, license plates, or documents to blur, black-out, or pixelate them. The image never leaves your device.</p>
+  </div>
+
+  <div class="panel">
+    <h2>1 · Load image</h2>
+    <div class="row">
+      <input type="file" id="file" accept="image/*">
+      <button id="reset" class="ghost" disabled>Reset image</button>
+      <button id="download" class="primary" disabled>Download redacted PNG</button>
+    </div>
+    <p class="hint" id="drop">Tip: select a file above. Processing happens locally via the Canvas API.</p>
+  </div>
+
+  <div class="panel" id="editor" style="display:none">
+    <h2>2 · Redact</h2>
+    <div class="toolbar">
+      <label class="field" style="margin:0">Tool</label>
+      <select id="tool" style="width:auto">
+        <option value="blur">Blur</option>
+        <option value="black">Black bar</option>
+        <option value="pixelate">Pixelate</option>
+      </select>
+      <label class="field" style="margin:0 0 0 12px">Brush size</label>
+      <input type="range" id="size" min="10" max="160" value="55" style="width:150px">
+      <label class="field" style="margin:0 0 0 12px" id="blurLbl">Blur strength</label>
+      <input type="range" id="blurAmt" min="2" max="24" value="10" style="width:120px">
+    </div>
+    <div style="overflow:auto">
+      <canvas id="cv" width="800" height="600"></canvas>
+    </div>
+    <p class="hint">Click and drag on the image. Re-drag over an area to re-apply. Use <em>Reset image</em> to start over from the original.</p>
+  </div>
+
+  <p class="hint">Downloaded files are generated on your machine. cloak does not store or transmit images.</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — your photos never leave your browser.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){return document.getElementById(id);};
+  var cv=$('cv'), ctx=cv.getContext('2d');
+  var origImage=null, dirty=false;
+
+  function loadFile(f){
+    if(!f) return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        var maxW=1600;
+        var w=img.naturalWidth, h=img.naturalHeight;
+        if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+        cv.width=w; cv.height=h;
+        ctx.drawImage(img,0,0,w,h);
+        origImage=img;
+        $('editor').style.display='';
+        $('reset').disabled=false; $('download').disabled=false;
+        dirty=false;
+        $('drop').textContent='Drag on the image to redact sensitive regions.';
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(f);
+  }
+
+  $('file').addEventListener('change',function(e){loadFile(e.target.files[0]);});
+
+  function getPos(e){
+    var rect=cv.getBoundingClientRect();
+    var sx=cv.width/rect.width, sy=cv.height/rect.height;
+    var cx=(e.clientX-rect.left)*sx, cy=(e.clientY-rect.top)*sy;
+    return {x:cx,y:cy};
+  }
+  function clipCircle(cx,cy,r){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();}
+
+  function applyStamp(cx,cy){
+    if(!origImage) return;
+    var tool=$('tool').value;
+    var r=+$('size').value;
+    var x=Math.max(0,cx-r), y=Math.max(0,cy-r);
+    var w=Math.min(cv.width,x+r)-x, h=Math.min(cv.height,y+r)-y;
+    if(w<=0||h<=0) return;
+
+    if(tool==='black'){
+      ctx.save(); clipCircle(cx,cy,r); ctx.fillStyle='#000'; ctx.fillRect(0,0,cv.width,cv.height); ctx.restore();
+      dirty=true; return;
+    }
+
+    // build temp from ORIGINAL image region (so re-drag stays consistent)
+    var tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
+    var tctx=tmp.getContext('2d');
+    tctx.drawImage(origImage, x/ (cv.width/origImage.naturalWidth), y/(cv.height/origImage.naturalHeight),
+                   w/(cv.width/origImage.naturalWidth), h/(cv.height/origImage.naturalHeight), 0,0,w,h);
+
+    if(tool==='pixelate'){
+      var bs=Math.max(6, Math.round(r/3));
+      var small=document.createElement('canvas'); small.width=Math.max(1,Math.floor(w/bs)); small.height=Math.max(1,Math.floor(h/bs));
+      var sctx=small.getContext('2d'); sctx.imageSmoothingEnabled=false;
+      sctx.drawImage(tmp,0,0,small.width,small.height);
+      tctx.imageSmoothingEnabled=false;
+      tctx.drawImage(small,0,0,small.width,small.height,0,0,w,h);
+    }
+    // composite onto display with circular clip
+    ctx.save(); clipCircle(cx,cy,r);
+    if(tool==='blur'){
+      if('filter' in ctx){ ctx.filter='blur('+(+$('blurAmt').value)+'px)'; }
+      ctx.drawImage(tmp,0,0,w,h,x,y,w,h);
+      ctx.filter='none';
+    }else{
+      ctx.drawImage(tmp,0,0,w,h,x,y,w,h);
+    }
+    ctx.restore();
+    dirty=true;
+  }
+
+  var drawing=false;
+  function start(e){ if(!origImage)return; drawing=true; var p=getPos(e); applyStamp(p.x,p.y); e.preventDefault(); }
+  function move(e){ if(!drawing)return; var p=getPos(e); applyStamp(p.x,p.y); e.preventDefault(); }
+  function end(){ drawing=false; }
+
+  cv.addEventListener('mousedown',start);
+  window.addEventListener('mousemove',move);
+  window.addEventListener('mouseup',end);
+  cv.addEventListener('touchstart',function(e){start(e.touches[0]);},{passive:false});
+  cv.addEventListener('touchmove',function(e){move(e.touches[0]);},{passive:false});
+  cv.addEventListener('touchend',end);
+
+  $('reset').addEventListener('click',function(){ if(origImage){ctx.drawImage(origImage,0,0,cv.width,cv.height); dirty=false; window.cloak.toast('Image reset');} });
+  $('download').addEventListener('click',function(){
+    var a=document.createElement('a');
+    a.href=cv.toDataURL('image/png');
+    a.download='redacted.png'; a.click();
+    window.cloak.toast('Downloaded redacted.png');
+  });
+  $('tool').addEventListener('change',function(){
+    var isBlur=this.value==='blur';
+    $('blurAmt').style.display=isBlur?'inline-block':'none';
+    $('blurLbl').style.display=isBlur?'inline':'none';
+  });
+})();
+</script>
+</body>
+</html>
