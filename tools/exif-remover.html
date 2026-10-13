@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EXIF &amp; Metadata Remover — cloak · jsonversal</title>
+<meta name="description" content="Strip GPS, camera, and timestamp metadata from photos entirely in your browser. Nothing is uploaded.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / EXIF &amp; Metadata Remover</div>
+    <h1>EXIF &amp; Metadata Remover</h1>
+    <p>Photos often carry hidden GPS coordinates, camera model, and timestamps. cloak re-encodes the image in your browser and drops all metadata — so nothing about where or when it was shot leaks when you share it.</p>
+  </div>
+
+  <div class="panel">
+    <h2>1 · Choose a photo</h2>
+    <div class="row gap-lg">
+      <div class="col">
+        <input type="file" id="file" accept="image/*">
+        <div class="hint">JPEG and PNG supported. Images are never uploaded — processing is local.</div>
+      </div>
+    </div>
+    <div id="previewWrap" style="display:none;margin-top:14px">
+      <img id="preview" alt="preview" style="max-width:100%;max-height:260px;border:1px solid var(--border);border-radius:10px">
+    </div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display:none">
+    <h2>2 · Detected metadata (before)</h2>
+    <div id="before" class="out" style="min-height:40px">No metadata found, or format not parseable.</div>
+    <div class="btn-row">
+      <button id="strip" class="primary">Remove metadata &amp; download</button>
+    </div>
+    <div id="after" class="out" style="min-height:20px;display:none"></div>
+    <a id="dl" download="cleaned.jpg" style="display:none" class="btn-row"><button class="ghost">⬇ Download cleaned image</button></a>
+  </div>
+
+  <p class="hint">How it works: the image is drawn onto an HTML canvas and re-exported. Canvas output does not carry EXIF/GPS/IPTC chunks, so the cleaned copy is metadata-free. JPEG is re-encoded (slightly lossy); PNG stays lossless but with metadata stripped.</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — your photos never leave your device.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+
+  // ---- best-effort JPEG EXIF parser (for display only) ----
+  function parseExif(buffer){
+    try{
+      var view=new DataView(buffer);
+      if(view.byteLength<4||view.getUint16(0)!==0xFFD8) return {found:false,reason:'not-jpeg'};
+      var off=2, exifStart=-1;
+      while(off+4<view.byteLength){
+        var marker=view.getUint16(off);
+        if((marker&0xFF00)!==0xFF00) break;
+        var size=view.getUint16(off+2);
+        if(marker===0xFFE1 && view.getUint8(off+4)===0x45 && view.getUint8(off+5)===0x78 && view.getUint8(off+6)===0x69 && view.getUint8(off+7)===0x66){
+          exifStart=off+4; break;
+        }
+        off+=2+size;
+      }
+      if(exifStart<0) return {found:false,reason:'no-exif'};
+      var tiff=exifStart+6;
+      var le=view.getUint16(tiff)===0x4949;
+      var g16=function(o){return view.getUint16(o,le);};
+      var g32=function(o){return view.getUint32(o,le);};
+      var ifd0=tiff+g32(tiff+4);
+      var TAGS={0x010F:'Make',0x0110:'Model',0x0131:'Software',0x0132:'DateTime',0x9003:'DateTimeOriginal',0x9004:'DateTimeDigitized',0x010E:'ImageDescription',0x8298:'Copyright',0x8825:'GPSInfo'};
+      function readStr(o,n){var s='';for(var i=0;i<n;i++){var c=view.getUint8(o+i);if(c===0)break;s+=String.fromCharCode(c);}return s;}
+      function readIFD(ifd,map){
+        var out={},count=g16(ifd);
+        for(var i=0;i<count;i++){
+          var e=ifd+2+i*12,tag=g16(e),type=g16(e+2),num=g32(e+4);
+          var vo=(num<=1)?(e+8):(tiff+g32(e+8));
+          if(!(tag in map))continue;
+          var name=map[tag];
+          if(type===2)out[name]=readStr(vo,num);
+          else if(type===3)out[name]=g16(vo);
+          else if(type===4)out[name]=g32(vo);
+        }
+        return out;
+      }
+      var d0=readIFD(ifd0,TAGS);
+      var fields=[];
+      ['Make','Model','Software','DateTimeOriginal','DateTimeDigitized','DateTime','ImageDescription','Copyright'].forEach(function(k){ if(d0[k])fields.push(k+': '+d0[k]); });
+      if(d0.GPSInfo!==undefined){
+        var gOff=tiff+d0.GPSInfo, gcount=g16(gOff), gps={};
+        for(var j=0;j<gcount;j++){
+          var ge=gOff+2+j*12,gtag=g16(ge),gtype=g16(ge+2),gnum=g32(ge+4);
+          var gvo=(gnum<=1)?(ge+8):(tiff+g32(ge+8));
+          if(gtag===0x0002||gtag===0x0004){
+            var arr=[];for(var k=0;k<3;k++)arr.push([g32(gvo+k*8),g32(gvo+k*8+4)]);
+            gps[gtag===0x0002?'lat':'lon']=arr;
+          }else if(gtag===0x0001||gtag===0x0003){
+            gps[gtag===0x0001?'latRef':'lonRef']=readStr(gvo,2);
+          }
+        }
+        if(gps.lat&&gps.lon){
+          function dec(a,ref){var d=a[0][0]/a[0][1]+a[1][0]/a[1][1]/60+a[2][0]/a[2][1]/3600;if(ref==='S'||ref==='W')d=-d;return d.toFixed(5);}
+          var la=dec(gps.lat,gps.latRef),lo=dec(gps.lon,gps.lonRef);
+          fields.push('GPS Latitude: '+la+(gps.latRef||'')+'  Longitude: '+lo+(gps.lonRef||''));
+        }else{
+          fields.push('GPS metadata present');
+        }
+      }
+      return {found:fields.length>0,fields:fields};
+    }catch(e){ return {found:false,reason:String(e)}; }
+  }
+  window.__cloakParseExif=parseExif; // exposed for automated testing
+
+  var currentFile=null, currentUrl=null;
+
+  $('file').addEventListener('change',function(){
+    var f=this.files&&this.files[0]; if(!f)return;
+    currentFile=f;
+    if(currentUrl)URL.revokeObjectURL(currentUrl);
+    currentUrl=URL.createObjectURL(f);
+    $('preview').onload=function(){
+      $('previewWrap').style.display='block';
+      $('resultPanel').style.display='block';
+      var r=parseExif(null); // placeholder; real parse below via FileReader
+    };
+    $('preview').src=currentUrl;
+    // parse EXIF from file bytes
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var res=parseExif(ev.target.result);
+      if(res.found){
+        $('before').textContent=res.fields.join('\n');
+      }else{
+        $('before').textContent='No parseable EXIF metadata found in this file (it may already be clean, or be a PNG with only text chunks).';
+      }
+      $('after').style.display='none';
+      $('dl').style.display='none';
+    };
+    reader.readAsArrayBuffer(f);
+  });
+
+  $('strip').addEventListener('click',function(){
+    if(!currentFile){window.cloak.toast('Pick a photo first',true);return;}
+    var url=URL.createObjectURL(currentFile);
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas');
+      c.width=img.naturalWidth; c.height=img.naturalHeight;
+      c.getContext('2d').drawImage(img,0,0);
+      var mime=currentFile.type==='image/png'?'image/png':'image/jpeg';
+      c.toBlob(function(blob){
+        if(!blob){window.cloak.toast('Could not re-encode image',true);return;}
+        var burl=URL.createObjectURL(blob);
+        var a=$('dl');
+        a.href=burl;
+        a.download='cleaned.'+(mime==='image/png'?'png':'jpg');
+        a.style.display='inline-block';
+        $('after').style.display='block';
+        $('after').textContent='✔ Metadata stripped. Cleaned file: '+(blob.size/1024).toFixed(1)+' KB (original '+(currentFile.size/1024).toFixed(1)+' KB). Download is ready above.';
+        window.cloak.toast('Metadata removed');
+      }, mime, mime==='image/jpeg'?0.92:undefined);
+      URL.revokeObjectURL(url);
+    };
+    img.onerror=function(){window.cloak.toast('Could not load image',true);URL.revokeObjectURL(url);};
+    img.src=url;
+  });
+})();
+</script>
+</body>
+</html>

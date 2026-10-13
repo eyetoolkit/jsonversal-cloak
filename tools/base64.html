@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base64 Encode / Decode — cloak · jsonversal</title>
+<meta name="description" content="Encode and decode Base64 text and files locally in your browser, with URL-safe mode.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / Base64 Encode / Decode</div>
+    <h1>Base64 Encode / Decode</h1>
+    <p>Convert text and files to and from Base64 — handy for embedding data in JSON, CSS, or API payloads. Encoding and decoding happen entirely on your device.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Mode</h2>
+    <div class="row">
+      <label class="check"><input type="radio" name="mode" id="mEnc" checked> Encode (text → Base64)</label>
+      <label class="check"><input type="radio" name="mode" id="mDec"> Decode (Base64 → text)</label>
+    </div>
+    <label class="check" id="urlWrap"><input type="checkbox" id="urlSafe"> URL-safe (replace +/ with -_ and strip padding)</label>
+    <div class="sep"></div>
+    <label class="field" for="in">Input</label>
+    <textarea id="in" placeholder="Enter text here…"></textarea>
+    <div class="btn-row">
+      <button id="run" class="primary">Run</button>
+      <button id="copy" class="ghost">Copy output</button>
+    </div>
+    <div class="out" id="out" style="margin-top:14px;min-height:24px">—</div>
+  </div>
+
+  <div class="panel">
+    <h2>File ↔ Base64</h2>
+    <div class="row gap-lg">
+      <div class="col">
+        <label class="field" for="fToB">File → Base64</label>
+        <input type="file" id="fToB">
+        <div class="btn-row"><button id="fToBrun" class="ghost">Convert to Base64</button></div>
+        <div class="out" id="fToBout" style="margin-top:10px;min-height:20px"></div>
+      </div>
+      <div class="col">
+        <label class="field" for="bToF">Base64 → File</label>
+        <textarea id="bToF" placeholder="Paste Base64 (with or without data: prefix)…"></textarea>
+        <label class="field" for="bName" style="margin-top:8px">File name</label>
+        <input type="text" id="bName" value="decoded.bin">
+        <div class="btn-row"><button id="bToFrun" class="ghost">Download file</button></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">Base64 is encoding, not encryption — it obscures but does not protect data. Always use TLS and encryption for anything sensitive.</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — your data stays local.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+  function enc(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function dec(b64){
+    // normalize url-safe back
+    b64=b64.replace(/-/g,'+').replace(/_/g,'/');
+    return decodeURIComponent(escape(atob(b64)));
+  }
+  function toUrlSafe(b64){ return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function fromUrlSafe(b64){ b64=b64.replace(/-/g,'+').replace(/_/g,'/'); while(b64.length%4)b64+='='; return b64; }
+
+  function run(){
+    var txt=$('in').value, url=$('urlSafe').checked;
+    try{
+      var res;
+      if($('mEnc').checked){ res=enc(txt); if(url)res=toUrlSafe(res); }
+      else { res=$('urlSafe').checked?fromUrlSafe(txt):txt; res=dec(res); }
+      $('out').textContent=res;
+    }catch(e){ $('out').textContent='Decode error: '+e.message; }
+  }
+  $('run').addEventListener('click',run);
+  $('copy').addEventListener('click',function(){ window.cloak.copyText($('out').textContent).then(function(ok){window.cloak.toast(ok?'Copied':'Copy failed',!ok);}); });
+  $('mEnc').addEventListener('change',function(){$('urlWrap').style.opacity=this.checked?'1':'.5';});
+  $('mDec').addEventListener('change',function(){$('urlWrap').style.opacity=this.checked?'.5':'1';});
+
+  // file -> base64
+  $('fToBrun').addEventListener('click',async function(){
+    var f=$('fToB').files&&$('fToB').files[0];
+    if(!f){window.cloak.toast('Choose a file',true);return;}
+    var b64=new Promise(function(res){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.readAsDataURL(f);});
+    $('fToBout').textContent=await b64;
+  });
+  // base64 -> file
+  $('bToFrun').addEventListener('click',function(){
+    var raw=$('bToF').value.trim();
+    if(!raw){window.cloak.toast('Paste Base64 first',true);return;}
+    var m=raw.match(/^data:([^;]+)?;base64,(.*)$/);
+    var mime='application/octet-stream', b64=m?m[2]:raw;
+    if(m&&m[1])mime=m[1];
+    try{
+      var bin=atob(fromUrlSafe(b64));
+      var bytes=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+      var blob=new Blob([bytes],{type:mime});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download=$('bName').value||'decoded.bin';a.click();
+      setTimeout(function(){URL.revokeObjectURL(url);},1000);
+      window.cloak.toast('Download started');
+    }catch(e){ window.cloak.toast('Invalid Base64',true); }
+  });
+})();
+</script>
+</body>
+</html>

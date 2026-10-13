@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link Dereferer — cloak · jsonversal</title>
+<meta name="description" content="Strip the referrer from any link so the destination can't see where visitors came from — entirely in your browser.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / Link Dereferer</div>
+    <h1>Link Dereferer</h1>
+    <p>Cloak the source of a link. When someone clicks your link, the destination normally sees the referring page in the <code>Referer</code> header. This tool produces links and pages that strip that referrer — so the destination learns nothing about where the click came from.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Your link</h2>
+    <input type="text" id="url" placeholder="https://example.com/some-page">
+    <div class="btn-row"><button id="make" class="primary">Generate</button></div>
+    <div id="out" style="margin-top:14px;display:none">
+      <h2 style="margin-top:8px">1 · Safe clickable link</h2>
+      <div class="out" id="linkBox" style="min-height:20px"></div>
+      <h2 style="margin-top:14px">2 · HTML snippet</h2>
+      <div class="out" id="snippet" style="min-height:20px"></div>
+      <div class="btn-row"><button id="copySnip" class="ghost">Copy snippet</button></div>
+      <h2 style="margin-top:14px">3 · Self-contained opener</h2>
+      <p class="hint">Download this tiny page and open it: it sets <code>referrerpolicy=no-referrer</code> before redirecting, so even the local file's origin isn't leaked.</p>
+      <div class="btn-row"><button id="dl" class="ghost">⬇ Download opener.html</button></div>
+    </div>
+  </div>
+
+  <p class="hint">This removes the <b>Referer</b> header only. It does not anonymize the visitor's IP or hide the destination — for that, use a VPN or Tor.</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — no redirects through our servers; everything is built locally.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function make(){
+    var u=$('url').value.trim();
+    if(!/^https?:\/\//i.test(u)){ window.cloak.toast('Enter a valid http(s) URL',true); return; }
+    $('out').style.display='block';
+    // 1. safe link
+    var link='<a href="'+esc(u)+'" rel="noreferrer" referrerpolicy="no-referrer" target="_blank">'+esc(u)+'</a>';
+    $('linkBox').innerHTML=link;
+    // 2. snippet
+    var snip='<a href="'+esc(u)+'" rel="noreferrer" referrerpolicy="no-referrer" target="_blank">Visit</a>';
+    $('snippet').textContent=snip;
+    // 3. opener html
+    var html='<!doctype html><html><head><meta name="referrer" content="no-referrer"><meta charset="utf-8"><title>cloak opener</title></head>'+
+      '<body style="font-family:sans-serif;padding:2rem">Redirecting… <script>window.location.replace('+JSON.stringify(u)+');<\/script></body></html>';
+    $('dl').onclick=function(){
+      var blob=new Blob([html],{type:'text/html'});
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cloak-opener.html';a.click();
+      setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+    };
+  }
+  $('make').addEventListener('click',make);
+  $('url').addEventListener('keydown',function(e){if(e.key==='Enter')make();});
+  $('copySnip').addEventListener('click',function(){ window.cloak.copyText($('snippet').textContent).then(function(ok){window.cloak.toast(ok?'Copied':'Copy failed',!ok);}); });
+})();
+</script>
+</body>
+</html>

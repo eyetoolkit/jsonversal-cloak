@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UUID &amp; Token Generator — cloak · jsonversal</title>
+<meta name="description" content="Generate v4/v7 UUIDs, random tokens, and API keys locally in your browser.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / UUID &amp; Token Generator</div>
+    <h1>UUID &amp; Token Generator</h1>
+    <p>Create RFC-4122 v4 and time-ordered v7 UUIDs, random tokens, and API keys. All randomness comes from your browser's cryptographic RNG.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Options</h2>
+    <div class="row gap-lg">
+      <div class="col" style="flex:0 1 220px">
+        <label class="field" for="type">Type</label>
+        <select id="type" style="width:auto">
+          <option value="uuid4">UUID v4 (random)</option>
+          <option value="uuid7">UUID v7 (time-ordered)</option>
+          <option value="token-hex">Token (hex)</option>
+          <option value="token-b62">Token (base62)</option>
+          <option value="apikey">API key (prefix + base62)</option>
+        </select>
+      </div>
+      <div class="col" style="flex:0 1 200px">
+        <label class="field" for="len">Length</label>
+        <input type="number" id="len" min="8" max="128" value="32">
+      </div>
+      <div class="col" id="prefixWrap" style="flex:0 1 200px;display:none">
+        <label class="field" for="prefix">Prefix</label>
+        <input type="text" id="prefix" value="clk_">
+      </div>
+      <div class="col" style="flex:0 1 160px">
+        <label class="field" for="count">How many</label>
+        <input type="number" id="count" min="1" max="100" value="5">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button id="gen" class="primary">Generate</button>
+      <button id="copyAll" class="ghost">Copy all</button>
+    </div>
+    <div id="results" class="out" style="margin-top:14px;min-height:24px">—</div>
+  </div>
+
+  <p class="hint">UUIDs are unique identifiers, not secrets — but random tokens and API keys are. Generate them fresh per use and never reuse or commit them.</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — generated locally, never transmitted.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+  var B62='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  function randBytes(n){ var b=new Uint8Array(n); crypto.getRandomValues(b); return b; }
+  function hex(n){ var b=randBytes(Math.ceil(n/2)); var s=''; for(var i=0;i<n;i++) s+=('0'+b[Math.floor(i/2)].toString(16)).slice(-2); return s.slice(0,n); }
+  function base62(n){ var b=randBytes(n); var s=''; for(var i=0;i<n;i++) s+=B62[b[i]%62]; return s; }
+  function uuidv4(){ return crypto.randomUUID(); }
+  function uuidv7(){
+    var ms=Date.now();
+    var b=randBytes(10);
+    var bytes=new Uint8Array(16);
+    bytes[0]=(ms/0x10000000000)&0xff; bytes[1]=(ms/0x100000000)>>0&0xff; // (ms>>32)&0xff
+    // safer 48-bit split
+    bytes[0]=Math.floor(ms/281474976710656)&0xff;
+    bytes[1]=Math.floor(ms/1099511627776)&0xff;
+    bytes[2]=Math.floor(ms/4294967296)&0xff;
+    bytes[3]=Math.floor(ms/16777216)&0xff;
+    bytes[4]=Math.floor(ms/65536)&0xff;
+    bytes[5]=Math.floor(ms/256)&0xff;
+    bytes[6]=(ms&0xff);
+    // version 7 in high nibble of byte6
+    bytes[6]=0x70|(bytes[6]&0x0f);
+    bytes[7]=b[1];
+    bytes[8]=0x80|(b[2]&0x3f);
+    for(var i=3;i<10;i++)bytes[8+i-2]=b[i];
+    function h(x){return ('0'+x.toString(16)).slice(-2);}
+    return h(bytes[0])+h(bytes[1])+h(bytes[2])+h(bytes[3])+'-'+h(bytes[4])+h(bytes[5])+'-'+h(bytes[6])+h(bytes[7])+'-'+h(bytes[8])+h(bytes[9])+'-'+h(bytes[10])+h(bytes[11])+h(bytes[12])+h(bytes[13])+h(bytes[14])+h(bytes[15]);
+  }
+  function generateOne(){
+    var t=$('type').value, len=+$('len').value||32;
+    if(t==='uuid4') return uuidv4();
+    if(t==='uuid7') return uuidv7();
+    if(t==='token-hex') return hex(len);
+    if(t==='token-b62') return base62(len);
+    if(t==='apikey') return ($('prefix').value||'')+base62(len);
+    return '';
+  }
+  function generate(){
+    var count=Math.max(1,Math.min(100,+$('count').value||1));
+    var out=[];
+    for(var i=0;i<count;i++) out.push(generateOne());
+    $('results').textContent=out.join('\n');
+    window.cloak._uuids=out;
+  }
+  $('type').addEventListener('change',function(){ $('prefixWrap').style.display=this.value==='apikey'?'block':'none'; });
+  $('gen').addEventListener('click',generate);
+  $('copyAll').addEventListener('click',function(){ if(!window.cloak._uuids)return; window.cloak.copyText(window.cloak._uuids.join('\n')).then(function(ok){window.cloak.toast(ok?'Copied all':'Copy failed',!ok);}); });
+  generate();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URL Encode / Decode — cloak · jsonversal</title>
+<meta name="description" content="Safely encode and decode URLs, query strings, and URI components in your browser.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / URL Encode / Decode</div>
+    <h1>URL Encode / Decode</h1>
+    <p>Escape special characters for safe use in query strings and paths, or reverse the process. Useful for debugging OAuth redirects and building API requests.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Mode</h2>
+    <div class="row">
+      <label class="check"><input type="radio" name="mode" id="mEnc" checked> Encode</label>
+      <label class="check"><input type="radio" name="mode" id="mDec"> Decode</label>
+    </div>
+    <div class="sep"></div>
+    <label class="field" for="variant">Variant</label>
+    <select id="variant" style="width:auto">
+      <option value="component">Component (encodeURIComponent) — encodes &amp; = ? / etc.</option>
+      <option value="full">Full URI (encodeURI) — leaves : / ? # intact</option>
+    </select>
+    <div class="sep"></div>
+    <label class="field" for="in">Input</label>
+    <textarea id="in" placeholder="https://example.com/search?q=a b&lang=en"></textarea>
+    <div class="btn-row">
+      <button id="run" class="primary">Run</button>
+      <button id="copy" class="ghost">Copy output</button>
+    </div>
+    <div class="out" id="out" style="margin-top:14px;min-height:24px">—</div>
+  </div>
+
+  <p class="hint"><b>encodeURIComponent</b> is what you want for individual query values. <b>encodeURI</b> is for whole URLs where you must keep the structure (slashes, colon).</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — runs locally in your browser.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+  function run(){
+    var txt=$('in').value, full=$('variant').value==='full';
+    try{
+      var res;
+      if($('mEnc').checked){ res=full?encodeURI(txt):encodeURIComponent(txt); }
+      else { res=full?decodeURI(txt):decodeURIComponent(txt); }
+      $('out').textContent=res;
+    }catch(e){ $('out').textContent='Error: '+e.message; }
+  }
+  $('run').addEventListener('click',run);
+  $('copy').addEventListener('click',function(){ window.cloak.copyText($('out').textContent).then(function(ok){window.cloak.toast(ok?'Copied':'Copy failed',!ok);}); });
+  $('in').addEventListener('input',run);
+})();
+</script>
+</body>
+</html>

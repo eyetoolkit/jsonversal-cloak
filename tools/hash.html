@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hash Generator — cloak · jsonversal</title>
+<meta name="description" content="Compute MD5, SHA-1/256/384/512, CRC32 and HMAC hashes for text or files — in your browser.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / Hash Generator</div>
+    <h1>Hash Generator</h1>
+    <p>Generate checksums and message digests for text or files. SHA family uses the browser's Web Crypto; MD5/CRC32 are computed locally. Nothing is sent anywhere.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Input</h2>
+    <div class="row gap-lg">
+      <div class="col" style="flex:1 1 360px">
+        <label class="field">Text</label>
+        <textarea id="text" placeholder="Type or paste text to hash…"></textarea>
+      </div>
+      <div class="col" style="flex:1 1 320px">
+        <label class="field">…or a file</label>
+        <input type="file" id="file">
+        <div class="hint">Large files are hashed in-memory locally.</div>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="row gap-lg">
+      <div class="col" style="flex:0 1 240px">
+        <label class="field" for="algo">Algorithm</label>
+        <select id="algo">
+          <option value="SHA-256">SHA-256</option>
+          <option value="SHA-1">SHA-1</option>
+          <option value="SHA-384">SHA-384</option>
+          <option value="SHA-512">SHA-512</option>
+          <option value="MD5">MD5 (legacy)</option>
+          <option value="CRC32">CRC32</option>
+          <option value="HMAC-SHA-256">HMAC-SHA-256</option>
+        </select>
+      </div>
+      <div class="col" id="keyWrap" style="flex:1 1 320px;display:none">
+        <label class="field" for="key">HMAC key</label>
+        <input type="text" id="key" placeholder="shared secret">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button id="go" class="primary">Compute hash</button>
+      <button id="copy" class="ghost">Copy</button>
+    </div>
+    <div class="out" id="out" style="margin-top:14px;min-height:24px">—</div>
+  </div>
+
+  <p class="hint">A hash proves integrity, not confidentiality — it is <b>not encryption</b>. MD5 and SHA-1 are broken for security use; prefer SHA-256+ for anything sensitive. HMAC proves authenticity with a shared key.</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — all hashing runs on your device.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+
+  // ---- CRC32 ----
+  var CRC_T=(function(){var t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
+  function crc32(bytes){var crc=0xffffffff;for(var i=0;i<bytes.length;i++)crc=(crc>>>8)^CRC_T[(crc^bytes[i])&0xff];return (crc^0xffffffff)>>>0;}
+
+  // ---- MD5 (bytes in, hex out) ----
+  function md5(bytes){
+    var origLen=bytes.length, x=bytes.slice();
+    x[origLen]=0x80; while(x.length%64!==56)x.push(0);
+    var bl=origLen*8; x.push(bl&0xff,(bl>>>8)&0xff,(bl>>>16)&0xff,(bl>>>24)&0xff,0,0,0,0);
+    var K=[];for(var i=0;i<64;i++)K[i]=Math.floor(Math.abs(Math.sin(i+1))*4294967296);
+    function rotl(n,c){return (n<<c)|(n>>>(32-c));}
+    function add(){var r=0;for(var i=0;i<arguments.length;i++)r=(r+arguments[i])|0;return r;}
+    function F(x,y,z){return (x&y)|(~x&z);}
+    function G(x,y,z){return (x&z)|(y&~z);}
+    function H(x,y,z){return x^y^z;}
+    function I(x,y,z){return y^(x|~z);}
+    var a0=0x67452301,b0=0xefcdab89,c0=0x98badcfe,d0=0x10325476;
+    var S1=[7,12,17,22],S2=[5,9,14,20],S3=[4,11,16,23],S4=[6,10,15,21];
+    for(var i=0;i<x.length;i+=64){
+      var X=[];for(var j=0;j<16;j++){var k=i+j*4;X[j]=(x[k]|(x[k+1]<<8)|(x[k+2]<<16)|(x[k+3]<<24));}
+      var a=a0,b=b0,c=c0,d=d0;
+      for(var t=0;t<16;t++){var f=F(b,c,d),tmp=add(a,f,X[t],K[t]),v=rotl(tmp>>>0,S1[t%4]);a=d;d=c;c=b;b=add(b,v);}
+      for(var t=0;t<16;t++){var g=(5*t+1)%16,f=G(b,c,d),tmp=add(a,f,X[g],K[t+16]),v=rotl(tmp>>>0,S2[t%4]);a=d;d=c;c=b;b=add(b,v);}
+      for(var t=0;t<16;t++){var g2=(3*t+5)%16,f=H(b,c,d),tmp=add(a,f,X[g2],K[t+32]),v=rotl(tmp>>>0,S3[t%4]);a=d;d=c;c=b;b=add(b,v);}
+      for(var t=0;t<16;t++){var g3=(7*t)%16,f=I(b,c,d),tmp=add(a,f,X[g3],K[t+48]),v=rotl(tmp>>>0,S4[t%4]);a=d;d=c;c=b;b=add(b,v);}
+      a0=add(a0,a);b0=add(b0,b);c0=add(c0,c);d0=add(d0,d);
+    }
+    function hx(n){var s='';for(var i=0;i<4;i++){s+=('0'+((n>>>(i*8))&0xff).toString(16)).slice(-2);}return s;}
+    return hx(a0)+hx(b0)+hx(c0)+hx(d0);
+  }
+
+  function toHex(bytes){var s='';for(var i=0;i<bytes.length;i++)s+=('0'+bytes[i].toString(16)).slice(-2);return s;}
+  async function hmac(alg,keyBytes,msgBytes){
+    var ck=await crypto.subtle.importKey('raw',keyBytes,{name:'HMAC',hash:{name:alg}},false,['sign']);
+    var sig=await crypto.subtle.sign('HMAC',ck,msgBytes);
+    return toHex(new Uint8Array(sig));
+  }
+
+  async function compute(){
+    var algo=$('algo').value;
+    var data;
+    if($('file').files&&$('file').files[0]){
+      data=new Uint8Array(await $('file').files[0].arrayBuffer());
+      $('out').textContent='hashing…';
+    }else{
+      data=new TextEncoder().encode($('text').value);
+    }
+    try{
+      var hex;
+      if(algo==='MD5') hex=md5(Array.from(data));
+      else if(algo==='CRC32') hex=('00000000'+(crc32(data)>>>0).toString(16)).slice(-8);
+      else if(algo==='HMAC-SHA-256'){
+        var key=new TextEncoder().encode($('key').value||'');
+        hex=await hmac('SHA-256',key,data);
+      }else{
+        var buf=await crypto.subtle.digest(algo,data);
+        hex=toHex(new Uint8Array(buf));
+      }
+      $('out').textContent=hex;
+    }catch(e){ $('out').textContent='Error: '+e.message; }
+  }
+
+  $('algo').addEventListener('change',function(){
+    $('keyWrap').style.display=this.value==='HMAC-SHA-256'?'block':'none';
+  });
+  $('go').addEventListener('click',compute);
+  $('copy').addEventListener('click',function(){ window.cloak.copyText($('out').textContent).then(function(ok){window.cloak.toast(ok?'Copied':'Copy failed',!ok);}); });
+})();
+</script>
+</body>
+</html>

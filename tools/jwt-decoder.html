@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JWT Decoder — cloak · jsonversal</title>
+<meta name="description" content="Decode JSON Web Tokens locally — inspect header, payload and expiry without sending the token anywhere.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo" aria-hidden="true"></span><span><b>cloak</b> <span class="sub">· jsonversal</span></span></a>
+    <span class="spacer"></span>
+    <span class="badge-inbrowser"><span class="dot"></span> 100% in your browser</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolhead">
+    <div class="breadcrumb"><a href="../">cloak</a> / JWT Decoder</div>
+    <h1>JWT Decoder</h1>
+    <p>Paste a JSON Web Token to inspect its header and payload. Decoding happens locally — your token is never transmitted, logged, or stored.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Token</h2>
+    <textarea id="in" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"></textarea>
+    <div class="btn-row">
+      <button id="run" class="primary">Decode</button>
+      <button id="copy" class="ghost">Copy payload</button>
+    </div>
+    <div id="meta" class="out" style="margin-top:14px;min-height:20px">—</div>
+  </div>
+
+  <div class="panel">
+    <h2>Header</h2>
+    <div id="header" class="out" style="min-height:20px">—</div>
+  </div>
+  <div class="panel">
+    <h2>Payload</h2>
+    <div id="payload" class="out" style="min-height:20px">—</div>
+  </div>
+
+  <p class="hint">Decoding shows the token's contents but does <b>not verify the signature</b>. Anyone can decode a JWT; only the holder of the secret can prove it is valid. Never paste a real production token into an untrusted site.</p>
+</main>
+
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — tokens are analyzed on your device only.</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="../assets/app.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+  function b64urlDecode(seg){
+    seg=seg.replace(/-/g,'+').replace(/_/g,'/');
+    while(seg.length%4)seg+='=';
+    var bin=atob(seg);
+    var bytes=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function pretty(obj){ return JSON.stringify(obj,null,2); }
+  function fmtTime(sec){
+    if(typeof sec!=='number'||isNaN(sec))return null;
+    return new Date(sec*1000).toISOString().replace('T',' ').replace(/\.\d+Z$/,' UTC');
+  }
+  function run(){
+    var tok=$('in').value.trim();
+    if(!tok){ $('meta').textContent='—'; $('header').textContent='—'; $('payload').textContent='—'; return; }
+    var parts=tok.split('.');
+    if(parts.length!==3){ $('meta').textContent='⚠ Not a valid JWT — expected 3 dot-separated parts (header.payload.signature).'; $('header').textContent=''; $('payload').textContent=''; return; }
+    try{
+      var header=JSON.parse(b64urlDecode(parts[0]));
+      var payload=JSON.parse(b64urlDecode(parts[1]));
+      $('header').textContent=pretty(header);
+      $('payload').textContent=pretty(payload);
+      var lines=[];
+      lines.push('Algorithm: '+(header.alg||'?')+'   Type: '+(header.typ||'?'));
+      var now=Math.floor(Date.now()/1000);
+      if(payload.exp!=null){ var e=fmtTime(payload.exp); lines.push('Expires: '+e+(payload.exp<now?'   ⚠ EXPIRED':'   ✓ valid')); }
+      if(payload.iat!=null) lines.push('Issued at: '+fmtTime(payload.iat));
+      if(payload.nbf!=null) lines.push('Not before: '+fmtTime(payload.nbf)+(payload.nbf>now?'   ⚠ not yet valid':''));
+      lines.push('Signature: '+parts[2].length+' chars (NOT verified by this tool).');
+      $('meta').textContent=lines.join('\n');
+    }catch(e){ $('meta').textContent='⚠ Could not decode: '+e.message; }
+  }
+  $('run').addEventListener('click',run);
+  $('copy').addEventListener('click',function(){ window.cloak.copyText($('payload').textContent).then(function(ok){window.cloak.toast(ok?'Copied':'Copy failed',!ok);}); });
+  $('in').addEventListener('input',run);
+})();
+</script>
+</body>
+</html>
