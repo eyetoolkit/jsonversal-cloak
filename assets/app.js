@@ -1,4 +1,3 @@
-// AI生成
 /* cloak — jsonversal · shared helpers (client-side only) */
 (function () {
   'use strict';
