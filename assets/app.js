@@ -1,3 +1,4 @@
+// AI生成
 /* cloak — jsonversal · shared helpers (client-side only) */
 (function () {
   'use strict';
@@ -37,6 +38,18 @@
       toast(ok ? 'Copied to clipboard' : 'Copy failed', !ok);
     });
   }
+  function initCookieBar() {
+    var bar = document.getElementById('cookiebar');
+    if (!bar) return;
+    var KEY = 'cloaksite-cookie-notice';
+    try { if (localStorage.getItem(KEY) === '1') return; } catch (e) {}
+    bar.classList.add('show');
+    var ok = document.getElementById('cookie-ok');
+    if (ok) ok.addEventListener('click', function () {
+      bar.classList.remove('show');
+      try { localStorage.setItem(KEY, '1'); } catch (e) {}
+    });
+  }
   // expose
-  window.cloak = { toast: toast, copyText: copyText, copyFrom: copyFrom };
+  window.cloak = { toast: toast, copyText: copyText, copyFrom: copyFrom, initCookieBar: initCookieBar };
 })();

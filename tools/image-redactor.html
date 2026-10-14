@@ -5,6 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Image Redactor — cloak · jsonversal</title>
 <meta name="description" content="Blur, black-out, or pixelate sensitive areas in photos — entirely in your browser. No upload.">
+<link rel="canonical" href="https://cloak.jsonversal.com/tools/image-redactor">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0f14">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Image Redactor — cloak · jsonversal">
+<meta property="og:description" content="Blur, black-out, or pixelate sensitive areas in photos — entirely in your browser. No upload.">
+<meta property="og:url" content="https://cloak.jsonversal.com/tools/image-redactor">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Image Redactor",
+  "url": "https://cloak.jsonversal.com/tools/image-redactor",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Any (browser-based)",
+  "description": "Blur, black-out, or pixelate sensitive areas in photos — entirely in your browser. No upload.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "isAccessibleForFree": true
+}
+</script>
 <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
@@ -56,10 +79,16 @@
   <p class="hint">Downloaded files are generated on your machine. cloak does not store or transmit images.</p>
 </main>
 
-<footer><div class="wrap"><strong>cloak · jsonversal</strong> — your photos never leave your browser.</div></footer>
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — your photos never leave your browser. · <a href="../privacy">Privacy Policy</a></div></footer>
 
 <div id="toast" role="status" aria-live="polite"></div>
+<div class="cookiebar" id="cookiebar" role="dialog" aria-label="Cookie notice">
+  <p>This site sets <b>no cookies and runs no trackers</b>. We only remember locally that you dismissed this notice.</p>
+  <div class="btn-row"><button class="primary" id="cookie-ok" type="button">Got it</button></div>
+</div>
+
 <script src="../assets/app.js"></script>
+<script>window.cloak.initCookieBar();</script>
 <script>
 (function(){
   'use strict';

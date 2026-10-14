@@ -1,3 +1,4 @@
+/* AI生成 */
 /* cloak — jsonversal · shared site styles
    Client-side privacy/security tools. No backend, no trackers. */
 :root{
@@ -156,6 +157,18 @@ footer a{color:var(--muted)}
   transition:opacity .2s,transform .2s;z-index:60;box-shadow:var(--shadow)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.err{border-color:var(--danger);color:var(--danger)}
+
+footer .flinks{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px}
+
+/* cookie notice */
+.cookiebar{
+  position:fixed;left:20px;right:20px;bottom:20px;z-index:70;max-width:560px;margin:0 auto;
+  background:var(--surface-2);border:1px solid var(--border-strong);border-radius:var(--radius);
+  padding:16px 18px;box-shadow:var(--shadow);display:none;
+}
+.cookiebar.show{display:block}
+.cookiebar p{margin:0 0 10px;font-size:13px;color:var(--muted)}
+.cookiebar b{color:var(--text)}
 
 @media (max-width:720px){
   .toolgrid{grid-template-columns:1fr}

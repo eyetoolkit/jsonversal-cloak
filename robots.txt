@@ -1,0 +1,5 @@
+# AI生成
+User-agent: *
+Allow: /
+
+Sitemap: https://cloak.jsonversal.com/sitemap.xml

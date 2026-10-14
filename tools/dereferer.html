@@ -5,6 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Link Dereferer — cloak · jsonversal</title>
 <meta name="description" content="Strip the referrer from any link so the destination can't see where visitors came from — entirely in your browser.">
+<link rel="canonical" href="https://cloak.jsonversal.com/tools/dereferer">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0f14">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Link Dereferer — cloak · jsonversal">
+<meta property="og:description" content="Strip the referrer from any link so the destination can't see where visitors came from — entirely in your browser.">
+<meta property="og:url" content="https://cloak.jsonversal.com/tools/dereferer">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Link Dereferer",
+  "url": "https://cloak.jsonversal.com/tools/dereferer",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Any (browser-based)",
+  "description": "Strip the referrer from any link so the destination can't see where visitors came from — entirely in your browser.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "isAccessibleForFree": true
+}
+</script>
 <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
@@ -42,10 +65,16 @@
   <p class="hint">This removes the <b>Referer</b> header only. It does not anonymize the visitor's IP or hide the destination — for that, use a VPN or Tor.</p>
 </main>
 
-<footer><div class="wrap"><strong>cloak · jsonversal</strong> — no redirects through our servers; everything is built locally.</div></footer>
+<footer><div class="wrap"><strong>cloak · jsonversal</strong> — no redirects through our servers; everything is built locally. · <a href="../privacy">Privacy Policy</a></div></footer>
 
 <div id="toast" role="status" aria-live="polite"></div>
+<div class="cookiebar" id="cookiebar" role="dialog" aria-label="Cookie notice">
+  <p>This site sets <b>no cookies and runs no trackers</b>. We only remember locally that you dismissed this notice.</p>
+  <div class="btn-row"><button class="primary" id="cookie-ok" type="button">Got it</button></div>
+</div>
+
 <script src="../assets/app.js"></script>
+<script>window.cloak.initCookieBar();</script>
 <script>
 (function(){
   'use strict';

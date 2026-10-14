@@ -1,3 +1,4 @@
+<!-- AI生成 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +7,25 @@
 <title>cloak — jsonversal · Privacy &amp; security tools that run in your browser</title>
 <meta name="description" content="Client-side privacy and security tools. Your data never leaves your browser — no accounts, no uploads, no trackers.">
 <link rel="canonical" href="https://cloak.jsonversal.com/">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0f14">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="cloak.jsonversal.com — Privacy & security tools in your browser">
+<meta property="og:description" content="Redact PII, blur images, strip EXIF, hash, encode and generate secrets — 100% in your browser. Nothing is uploaded.">
+<meta property="og:url" content="https://cloak.jsonversal.com/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "cloak · jsonversal",
+  "url": "https://cloak.jsonversal.com/",
+  "description": "Client-side privacy and security tools that run entirely in your browser.",
+  "publisher": { "@type": "Organization", "name": "jsonversal", "url": "https://jsonversal.com" }
+}
+</script>
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -167,11 +187,18 @@
   <div class="wrap">
     <strong>cloak · jsonversal</strong> — all tools execute locally in your browser.
     No data is transmitted to any server. For full details see our
-    <a href="#" onclick="return false">Privacy Policy</a>.
+    <a href="privacy">Privacy Policy</a>.
   </div>
 </footer>
 
 <div id="toast" role="status" aria-live="polite"></div>
+
+<div class="cookiebar" id="cookiebar" role="dialog" aria-label="Cookie notice">
+  <p>This site sets <b>no cookies and runs no trackers</b>. We only remember locally that you dismissed this notice.</p>
+  <div class="btn-row"><button class="primary" id="cookie-ok" type="button">Got it</button></div>
+</div>
+
 <script src="assets/app.js"></script>
+<script>window.cloak.initCookieBar();</script>
 </body>
 </html>

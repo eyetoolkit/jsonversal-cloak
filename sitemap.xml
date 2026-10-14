@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://cloak.jsonversal.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/pii-redactor</loc><priority>0.9</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/image-redactor</loc><priority>0.9</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/exif-remover</loc><priority>0.9</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/password-generator</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/password-strength</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/hash</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/base64</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/url</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/jwt-decoder</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/uuid-generator</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/dereferer</loc><priority>0.8</priority></url>
+  <url><loc>https://cloak.jsonversal.com/tools/fake-data</loc><priority>0.7</priority></url>
+  <url><loc>https://cloak.jsonversal.com/privacy</loc><priority>0.3</priority></url>
+</urlset>

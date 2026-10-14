@@ -5,6 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PII Text Redactor — cloak · jsonversal</title>
 <meta name="description" content="Detect and mask emails, phones, credit cards, SSNs, IPs and URLs in any text — entirely in your browser.">
+<link rel="canonical" href="https://cloak.jsonversal.com/tools/pii-redactor">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0f14">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PII Text Redactor — cloak · jsonversal">
+<meta property="og:description" content="Detect and mask emails, phones, credit cards, SSNs, IPs and URLs in any text — entirely in your browser.">
+<meta property="og:url" content="https://cloak.jsonversal.com/tools/pii-redactor">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PII Text Redactor",
+  "url": "https://cloak.jsonversal.com/tools/pii-redactor",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Any (browser-based)",
+  "description": "Detect and mask emails, phones, credit cards, SSNs, IPs and URLs in any text — entirely in your browser.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "isAccessibleForFree": true
+}
+</script>
 <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
@@ -78,11 +101,17 @@
 </main>
 
 <footer>
-  <div class="wrap"><strong>cloak · jsonversal</strong> — every byte of text stays in your browser.</div>
+  <div class="wrap"><strong>cloak · jsonversal</strong> — every byte of text stays in your browser. · <a href="../privacy">Privacy Policy</a></div>
 </footer>
 
 <div id="toast" role="status" aria-live="polite"></div>
+<div class="cookiebar" id="cookiebar" role="dialog" aria-label="Cookie notice">
+  <p>This site sets <b>no cookies and runs no trackers</b>. We only remember locally that you dismissed this notice.</p>
+  <div class="btn-row"><button class="primary" id="cookie-ok" type="button">Got it</button></div>
+</div>
+
 <script src="../assets/app.js"></script>
+<script>window.cloak.initCookieBar();</script>
 <script>
 (function(){
   'use strict';
